@@ -26,6 +26,8 @@
 			import { OrbitControls } from './jsm/controls/OrbitControls.js';
 			import { RectAreaLightHelper } from './jsm/helpers/RectAreaLightHelper.js';
 			import { RectAreaLightUniformsLib } from './jsm/lights/RectAreaLightUniformsLib.js';
+			import { OBJLoader } from './jsm/loaders/OBJLoader.js';
+
 
 			// shader injection for box projected cube environment mapping
 			const worldposReplace = /* glsl */`
@@ -185,12 +187,59 @@
 			#endif
 			`;
 
+			function getAverageRGB(imgEl) {
+
+			    var blockSize = 5, // only visit every 5 pixels
+			        defaultRGB = {r:0,g:0,b:0}, // for non-supporting envs
+			        canvas = document.createElement('canvas'),
+			        context = canvas.getContext && canvas.getContext('2d'),
+			        data, width, height,
+			        i = -4,
+			        length,
+			        rgb = {r:0,g:0,b:0},
+			        count = 0;
+
+			    if (!context) {
+			        return defaultRGB;
+			    }
+
+			    height = canvas.height = imgEl.naturalHeight || imgEl.offsetHeight || imgEl.height;
+			    width = canvas.width = imgEl.naturalWidth || imgEl.offsetWidth || imgEl.width;
+
+			    context.drawImage(imgEl, 0, 0);
+
+			    try {
+			        data = context.getImageData(0, 0, width, height);
+			    } catch(e) {
+			        /* security error, img on diff domain */
+			        return defaultRGB;
+			    }
+
+			    length = data.data.length;
+
+			    while ( (i += blockSize * 4) < length ) {
+			        ++count;
+			        rgb.r += data.data[i];
+			        rgb.g += data.data[i+1];
+			        rgb.b += data.data[i+2];
+			    }
+
+			    // ~~ used to floor values
+			    rgb.r = ~~(rgb.r/count);
+			    rgb.g = ~~(rgb.g/count);
+			    rgb.b = ~~(rgb.b/count);
+
+			    return rgb;
+
+			}
+
+
 			// scene size
 			const WIDTH = window.innerWidth;
 			const HEIGHT = window.innerHeight;
 
 			// camera
-			const VIEW_ANGLE = 45;
+			const VIEW_ANGLE = 80;
 			const ASPECT = WIDTH / HEIGHT;
 			const NEAR = 1;
 			const FAR = 800;
@@ -202,6 +251,8 @@
 			let groundPlane, wallMat, nftMat;
 
 			let video;
+
+			let object;
 
 
 
@@ -248,11 +299,10 @@
 
 				// camera
 				camera = new THREE.PerspectiveCamera( VIEW_ANGLE, ASPECT, NEAR, FAR );
-				camera.position.set( 160, -16, - 2 );
-				camera.rotation.set(1.9,1.5,-2);
+				camera.position.set( 120, -30,0 );
+				camera.rotation.set(0,0,-2);
 
 				cameraControls = new OrbitControls( camera, renderer.domElement );
-				cameraControls.target.set( 0, - 10, 0 );
 				cameraControls.maxDistance = 400;
 				cameraControls.minDistance = 10;
 				cameraControls.addEventListener( 'change', render );
@@ -295,7 +345,7 @@
 				boxProjectedMat.onBeforeCompile = function ( shader ) {
 
 					//these parameters are for the cubeCamera texture
-					shader.uniforms.cubeMapSize = { value: new THREE.Vector3( 200, 200, 100 ) };
+					shader.uniforms.cubeMapSize = { value: new THREE.Vector3( 200, 200, 200 ) };
 					shader.uniforms.cubeMapPos = { value: new THREE.Vector3( 0, - 50, 0 ) };
 
 					//replace shader chunks with box projection chunks
@@ -330,6 +380,13 @@
 
 				} );
 
+				bumpTex.wrapS = THREE.RepeatWrapping;
+				bumpTex.wrapT = THREE.RepeatWrapping;
+				diffuseTex.repeat.set( 2, 2);
+				diffuseTex.wrapS = THREE.RepeatWrapping;
+				diffuseTex.wrapT = THREE.RepeatWrapping;
+				diffuseTex.repeat.set( 2, 2);
+
 
 				video = document.getElementById( 'video' );
 				video.play();
@@ -344,10 +401,14 @@
 				//bumpTex.RepeatWrapping
 
 				wallMat = new THREE.MeshPhysicalMaterial( {
-					map: diffuseTex,
+					//map: diffuseTex,
 					bumpMap: bumpTex,
-					bumpScale: 0.3,
+					bumpScale: 0.1,
+					roughness:0,
+					metalness:.5
 				} );
+
+
 
 
 				nftMat = new THREE.MeshStandardMaterial( {
@@ -355,7 +416,6 @@
 					emissiveIntensity: 1,
 					color: 0xffffff,
 					emissive: 0xffffff,
-					side: THREE.DoubleSide
 
 				} );
 
@@ -395,6 +455,23 @@
 				nft.rotateY( Math.PI / 2 );
 				scene.add( nft );
 
+				const colorSampler = new THREE.Mesh( nftGeo, nftMat );
+
+				colorSampler.rotateY( Math.PI / 2 );
+				colorSampler.scale.set(0.001,0.001,1);
+				scene.add(colorSampler);
+
+
+
+
+				const torusGeo = new THREE.TorusKnotGeometry( 5, 2, 100, 16 );
+				const torusMat = new THREE.MeshPhysicalMaterial( { color: 0xffffff,roughness:1 } );
+				const torusKnot = new THREE.Mesh( torusGeo, torusMat );
+				torusKnot.position.y=-45;
+				torusKnot.position.x=-50;
+				scene.add( torusKnot );
+
+
 				//lights
 				const width = 100;
 				const height = 100;
@@ -405,10 +482,10 @@
 
 				RectAreaLightUniformsLib.init();
 
-				//const frontLight = new THREE.RectAreaLight( 0xaaaaaa, intensity, width, height );
-				//frontLight.position.set( -99, 5, 0 );
-				//frontLight.lookAt( 0, 5, 0 );
-				//scene.add( frontLight );
+				const frontLight = new THREE.RectAreaLight( 0xaaaaaa, intensity, width, height );
+				frontLight.position.set( -99, 5, 0 );
+				frontLight.lookAt( 0, 5, 0 );
+				scene.add( frontLight );
 
 
 
