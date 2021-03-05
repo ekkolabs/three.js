@@ -12,6 +12,11 @@
 		<div id="info">
 		Testing NFT gallery <br> Demo Scene
 		</div>
+		<video id="video" loop crossOrigin="anonymous" playsinline style="display:none" muted>
+					<source src="https://stream.mux.com/wnX6xV00qdqBzOj01kCWeXHtp02WF4Mc56Lg78YgyPev84/high.mp4">
+					<source src="textures/sintel.mp4" type='video/mp4; codecs="avc1.42E01E, mp4a.40.2"'>
+		</video>
+
 
 		<script type="module">
 
@@ -190,15 +195,22 @@
 			const NEAR = 1;
 			const FAR = 800;
 
-			let camera, cubeCamera, scene, renderer;
+			let camera, cubeCamera, scene, renderer, clock;
 
 			let cameraControls;
 
-			let groundPlane, wallMat;
+			let groundPlane, wallMat, nftMat;
+
+			let video;
+
+
 
 			init();
+			animate();
 
 			function init() {
+
+				clock = new THREE.Clock();
 
 				const container = document.getElementById( 'container' );
 
@@ -236,14 +248,16 @@
 
 				// camera
 				camera = new THREE.PerspectiveCamera( VIEW_ANGLE, ASPECT, NEAR, FAR );
-				camera.position.set( 280, 106, - 5 );
+				camera.position.set( 160, -16, - 2 );
+				camera.rotation.set(1.9,1.5,-2);
 
 				cameraControls = new OrbitControls( camera, renderer.domElement );
 				cameraControls.target.set( 0, - 10, 0 );
 				cameraControls.maxDistance = 400;
 				cameraControls.minDistance = 10;
 				cameraControls.addEventListener( 'change', render );
-				cameraControls.update();
+
+				//cameraControls.update();
 
 				// cube camera for environment map
 
@@ -265,7 +279,7 @@
 				rMap.repeat.set( 2, .2);
 
 				const defaultMat = new THREE.MeshPhysicalMaterial( {
-					roughness: 1,
+					roughness: 0,
 					envMap: cubeRenderTarget.texture,
 					roughnessMap: rMap
 
@@ -273,7 +287,7 @@
 
 				const boxProjectedMat = new THREE.MeshPhysicalMaterial( {
 					color: new THREE.Color( '#ffffff' ),
-					roughness: 1,
+					roughness: .5,
 					envMap: cubeRenderTarget.texture,
 					roughnessMap: rMap
 				} );
@@ -315,6 +329,16 @@
 					updateCubeMap();
 
 				} );
+
+
+				video = document.getElementById( 'video' );
+				video.play();
+
+				const videoTex = new THREE.VideoTexture( video );
+				videoTex.wrapS = THREE.RepeatWrapping;
+				videoTex.wrapT = THREE.RepeatWrapping;
+				rMap.repeat.set( 2, .2);
+
 				//diffuseTex.repeat.set(2,2);
 				//bumpTex.repeat.set(2,2);
 				//bumpTex.RepeatWrapping
@@ -323,6 +347,16 @@
 					map: diffuseTex,
 					bumpMap: bumpTex,
 					bumpScale: 0.3,
+				} );
+
+
+				nftMat = new THREE.MeshStandardMaterial( {
+					emissiveMap : videoTex,
+					emissiveIntensity: 1,
+					color: 0xffffff,
+					emissive: 0xffffff,
+					side: THREE.DoubleSide
+
 				} );
 
 
@@ -347,30 +381,38 @@
 				scene.add( planeFront1 );
 
 
-
-
-
 				const planeLeft = new THREE.Mesh( planeGeo, wallMat );
 				planeLeft.position.x = - 100;
 				planeLeft.position.y = 50;
 				planeLeft.rotateY( Math.PI / 2 );
 				scene.add( planeLeft );
 
+
+
+				const nftGeo = new THREE.PlaneGeometry( 100, 100 );
+				const nft = new THREE.Mesh( nftGeo, nftMat );
+				nft.position.set( -98, 5, 0 );
+				nft.rotateY( Math.PI / 2 );
+				scene.add( nft );
+
 				//lights
 				const width = 100;
 				const height = 100;
 				const intensity = 2;
 
+				const ambLight = new THREE.AmbientLight( 0x404040, .2 ); // soft white light
+				scene.add(ambLight);
+
 				RectAreaLightUniformsLib.init();
 
-				const blueRectLight = new THREE.RectAreaLight( 0xaaaaaa, intensity*.4, width, height );
-				blueRectLight.position.set( 99, 5, 0 );
-				blueRectLight.lookAt( 0, 5, 0 );
-				scene.add( blueRectLight );
+				//const frontLight = new THREE.RectAreaLight( 0xaaaaaa, intensity, width, height );
+				//frontLight.position.set( -99, 5, 0 );
+				//frontLight.lookAt( 0, 5, 0 );
+				//scene.add( frontLight );
 
 
 
-				const redRectLight = new THREE.RectAreaLight( 0x9aaeff, intensity, width, height );
+				/*const redRectLight = new THREE.RectAreaLight( 0x9aaeff, intensity, width, height );
 				redRectLight.position.set( - 99, 5, 0 );
 				redRectLight.lookAt( 0, 5, 0 );
 				scene.add( redRectLight );
@@ -378,7 +420,8 @@
 				const redRectLightHelper = new RectAreaLightHelper( redRectLight );
 				redRectLight.add( redRectLightHelper );
 
-				render();
+				*/
+
 
 			}
 
@@ -397,13 +440,24 @@
 
 				groundPlane.visible = true;
 
+			}
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+
 				render();
 
 			}
 
 			function render() {
+				const time = clock.getElapsedTime();
 
+				updateCubeMap();
 				renderer.render( scene, camera );
+
+				//console.log(cameraControls);
+
 
 			}
 
