@@ -36,7 +36,9 @@
 			import { OrbitControls } from './jsm/controls/OrbitControls.js';
 			import { RectAreaLightHelper } from './jsm/helpers/RectAreaLightHelper.js';
 			import { RectAreaLightUniformsLib } from './jsm/lights/RectAreaLightUniformsLib.js';
-			//import { OBJLoader } from './jsm/loaders/OBJLoader.js';
+			import { OBJLoader } from './jsm/loaders/OBJLoader.js';
+
+
 
 			import { SceneUtils } from './jsm/utils/SceneUtils.js';
 			import { TWEEN } from './jsm/libs/tween.module.min.js';
@@ -227,12 +229,14 @@
 
 			let cameraControls;
 
-			let groundPlane, wallMat, ceilingMat, nftMat;
+			let groundPlane, boxProjectedMat, wallMat, ceilingMat, nftMat;
 			let planeLeft,planeRight,planeBack,planeTop;
 
 			let video, videoTex;
 
-			let frontLight,ambLight;
+			let lightBox1,ambLight;
+
+			let torusKnot,character;
 
 			let nft;
 
@@ -255,7 +259,7 @@
 
 				//these parameters are for the cubeCamera texture
 				shader.uniforms.cubeMapSize = { value: new THREE.Vector3( 200, 200, 200 ) };
-				shader.uniforms.cubeMapPos = { value: new THREE.Vector3( 0, - 50, 0 ) };
+				shader.uniforms.cubeMapPos = { value: new THREE.Vector3( 0, -49, 0 ) };
 
 				//replace shader chunks with box projection chunks
 				shader.vertexShader = 'varying vec3 vWorldPosition;\n' + shader.vertexShader;
@@ -362,9 +366,9 @@
 					generateMipmaps: true,
 					minFilter: THREE.LinearMipmapLinearFilter
 				} );
-				cubeCamera = new THREE.CubeCamera( 1, 100, cubeRenderTarget );
+				cubeCamera = new THREE.CubeCamera( 1, 500, cubeRenderTarget );
 
-				cubeCamera.position.set( 0, - 100, 0 );
+				//cubeCamera.position.set( 0, 0, 0 );
 				scene.add( cubeCamera );
 
 				// ground floor ( with box projected environment mapping )
@@ -400,7 +404,7 @@
 
 				} );
 
-				const boxProjectedMat = new THREE.MeshStandardMaterial( {
+				boxProjectedMat = new THREE.MeshStandardMaterial( {
 					color: new THREE.Color( '#ffffff' ),
 
 					envMap: cubeRenderTarget.texture,
@@ -486,15 +490,17 @@
 
 				planeLeft = new THREE.Mesh( planeGeo, wallMat );
 				planeLeft.position.z = - 150;
-				planeLeft.position.x = 0;
+				planeLeft.position.x = 20;
 				planeLeft.position.y = 50;
+
 				scene.add( planeLeft );
 
 				planeRight = new THREE.Mesh( planeGeo, wallMat );
 				planeRight.position.z = 150;
-				planeRight.position.x = 0;
+				planeRight.position.x = 20;
 				planeRight.position.y = 50;
 				planeRight.rotateY( Math.PI );
+
 				scene.add( planeRight );
 
 
@@ -502,13 +508,16 @@
 				planeBack.position.x = - 100;
 				planeBack.position.y = 50;
 				planeBack.rotateY( Math.PI / 2 );
+
+
 				scene.add( planeBack );
 
 				planeTop = new THREE.Mesh( planeGeo, ceilingMat );
 				planeTop.scale.set(.95,.95,1);
 				planeTop.position.x = 0;
-				planeTop.position.y = 150;
+				planeTop.position.y = 180;
 				planeTop.rotateX( Math.PI / 2 );
+
 				scene.add( planeTop );
 
 
@@ -521,21 +530,80 @@
 
 
 
-
-
-
-
-
-
-
-
 				const torusGeo = new THREE.TorusKnotGeometry( 5, 2, 100, 16 );
-				const torusMat = new THREE.MeshPhysicalMaterial( { color: 0xffffff,roughness:1 } );
-				const torusKnot = new THREE.Mesh( torusGeo, torusMat );
+				const torusMat = new THREE.MeshPhysicalMaterial( {
+					color: 0xffffff,
+					roughness:.5,
+					metalness:0.5,
+
+
+
+				} );
+				torusKnot = new THREE.Mesh( torusGeo, torusMat );
 				torusKnot.position.y=-45;
 				torusKnot.position.x=-50;
+
+				//torusKnot.position.set(-50,-50,-50)
 				torusKnot.castshadow = true;
-				scene.add( torusKnot );
+				//scene.add( torusKnot );
+
+				// manager
+
+				function loadModel() {
+
+					character.traverse( function ( child ) {
+
+						if ( child.isMesh ) child.material = torusMat;
+
+					} );
+
+					character.position.y = - 49;
+					character.position.x = -50;
+					character.rotateY( -Math.PI  / 2  );
+					character.scale.set(.2,.2,.2);
+					scene.add( character );
+
+				}
+
+				const manager = new THREE.LoadingManager( loadModel );
+
+				manager.onProgress = function ( item, loaded, total ) {
+
+					console.log( item, loaded, total );
+
+				};
+
+
+				// model
+
+				function onProgress( xhr ) {
+
+					if ( xhr.lengthComputable ) {
+
+						const percentComplete = xhr.loaded / xhr.total * 100;
+						console.log( 'model ' + Math.round( percentComplete, 2 ) + '% downloaded' );
+
+					}
+
+				}
+
+				function onError() {}
+
+				const objLoader = new OBJLoader( manager );
+				objLoader.load( 'gal/10806_w_Juliette_30k.OBJ', function ( obj ) {
+
+					character = obj;
+
+				}, onProgress, onError );
+
+				//
+
+
+
+
+
+
+
 
 
 				//lights
@@ -545,8 +613,7 @@
 
 				const nftGeo = new THREE.PlaneGeometry( width, height );
 				nft = new THREE.Mesh( nftGeo, nftMat );
-				nft.position.set( -98, 55, 0 );
-				nft.rotateY( Math.PI / 2 );
+
 				scene.add( nft );
 
 
@@ -556,15 +623,22 @@
 
 				RectAreaLightUniformsLib.init();
 
-				frontLight = new THREE.RectAreaLight( 0xaaaaaa, intensity, width, height );
-				frontLight.position.set( -98, 55, 0 );
-				//frontLight.lookAt( 0, 5, 0 );
-				frontLight.lookAt( 0, 55, 0 );
-				frontLight.shadowMap = true;
+				lightBox1 = new THREE.RectAreaLight( 0xaaaaaa, intensity, width, height );
+				//lightBox1.position.set( -98, 55, -100 );
+				//lightBox1.lookAt( 0, 5, 0 );
+				//lightBox1.lookAt( 0, 55, 0 );
+				//lightBox1.rotateY( Math.PI / 2 );
+				//lightBox1.castShadow = true;
 
-				scene.add( frontLight );
 				// attach to NFT
-				nft.attach( frontLight );
+
+				nft.attach( lightBox1 );
+				lightBox1.position.z-=1;
+				lightBox1.rotateY( Math.PI );
+
+				nft.position.set( -98, 55, 0 );
+				nft.rotateY( Math.PI / 2 );
+
 
 				// poST PROC
 
@@ -603,7 +677,9 @@
 				//scene.fog.density = 0;
 
 				groundPlane.visible = false;
-				planeTop.visible = false;
+				//boxProjectedMat.shader.uniforms
+				//lightBox1.visible = false;
+				//planeTop.visible = false;
 
 				cubeCamera.position.copy( groundPlane.position );
 
@@ -614,7 +690,9 @@
 				wallMat.roughness = WALLMAT_ROUGHNESS;
 
 				groundPlane.visible = true;
-				planeTop.visible = true;
+
+				//planeTop.visible = true;
+				//lightBox1.visible = true;
 
 
 			}
@@ -706,8 +784,11 @@
 			function render() {
 				const time = clock.getElapsedTime();
 
-				nft.position.y += .1*Math.sin(time*.1);
+				//nft.position.z -= 2*Math.sin(time);
 
+
+				//torusKnot.position.y += .1*Math.sin(time);
+				torusKnot.position.y += .1*Math.sin(time);
 				// square
 				renderer.setRenderTarget(pixRenderTarget);
 				renderer.render(pixScene, pixCam);
@@ -732,10 +813,10 @@
 				avg = avgColor(avg);
 
 
-				frontLight.color.setRGB(avg[0]/255,avg[1]/255,avg[2]/255);
-				ambLight.color = 	frontLight.color;
-				frontLight.color.offsetHSL(0,0,.4);
-				scene.fog.color =	frontLight.color;
+				lightBox1.color.setRGB(avg[0]/255,avg[1]/255,avg[2]/255);
+				ambLight.color = 	lightBox1.color;
+				lightBox1.color.offsetHSL(0,0,.4);
+				scene.fog.color =	lightBox1.color;
 				scene.fog.color.offsetHSL(0,0,-.2);
 				//document.getElementById("info").style.color = rgb(avg[0],avg[1],avg[2]);
 				//console.log(avg);
