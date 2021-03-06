@@ -12,9 +12,9 @@
 		<div id="info">
 		Testing NFT gallery <br> Demo Scene
 		</div>
-		<video id="video" loop crossOrigin="anonymous" playsinline style="display:none" autoplay muted>
+		<video id="video" loop crossOrigin="anonymous" playsinline style="display:none"   muted>
 
-				<source src="https://stream.mux.com/kOHbRiWtS9SK9d01llu1DyYsyUKePjx02xN7Ru7UR00007g/high.mp4" muted>
+				<source src="https://stream.mux.com/kOHbRiWtS9SK9d01llu1DyYsyUKePjx02xN7Ru7UR00007g/high.mp4" >
 				<!--<source src="https://stream.mux.com/kEoeZ7GjCjKKpwrQTk3902Gxx6ZqLnYKdmeLvZbvfbUY/high.mp4">-->
 
 					<source src="textures/sintel.mp4" type='video/mp4; codecs="avc1.42E01E, mp4a.40.2"'>
@@ -208,8 +208,8 @@
 			const ASPECT = WIDTH / HEIGHT;
 			const NEAR = 1;
 			const FAR = 800;
-			const FOG_DENSITY = 0.003;
-			const WALLMAT_ROUGHNESS = 0.6;
+			const FOG_DENSITY = 0.013;
+			const WALLMAT_ROUGHNESS = 0.4;
 
 			let camera, cubeCamera, scene, renderer, clock;
 
@@ -234,6 +234,7 @@
 
 			init();
 			animate();
+
 
 
 
@@ -285,9 +286,9 @@
 
 
 
-				//renderer.outputEncoding = THREE.sRGBEncoding;
+				renderer.outputEncoding = THREE.sRGBEncoding;
 
-				//renderer.shadowMap.enabled = true;
+				renderer.shadowMap.enabled = true;
 
 				container.appendChild( renderer.domElement );
 
@@ -323,7 +324,7 @@
 				// scene
 				scene = new THREE.Scene();
 
-	  		scene.fog = new THREE.FogExp2(0x000000, FOG_DENSITY);
+	  		scene.fog = new THREE.Fog(0x000000, 150,300);
 
 				// camera
 				camera = new THREE.PerspectiveCamera( VIEW_ANGLE, ASPECT, NEAR, FAR );
@@ -358,27 +359,6 @@
 				rMap.wrapT = THREE.RepeatWrapping;
 				rMap.repeat.set( 2, .2);
 
-				const defaultMat = new THREE.MeshPhysicalMaterial( {
-					roughness: 0,
-					envMap: cubeRenderTarget.texture,
-					roughnessMap: rMap
-
-				} );
-
-				const boxProjectedMat = new THREE.MeshPhysicalMaterial( {
-					color: new THREE.Color( '#ffffff' ),
-					roughness: .5,
-					envMap: cubeRenderTarget.texture,
-					roughnessMap: rMap
-				} );
-
-				boxProjectedMat.onBeforeCompile = obc;
-
-				groundPlane = new THREE.Mesh( new THREE.PlaneGeometry( 200, 200, 1 ), boxProjectedMat );
-				groundPlane.rotateX( - Math.PI / 2 );
-				groundPlane.position.set( 0, - 49, 0 );
-				scene.add( groundPlane );
-
 				// walls
 				const diffuseTex = loader.load( 'textures/brick_diffuse.jpg', function () {
 
@@ -391,6 +371,42 @@
 
 				} );
 
+				const checkerTex = loader.load( 'textures/floors/FloorsCheckerboard_S_Diffuse.jpg', function () {
+
+					updateCubeMap();
+
+				} );
+				checkerTex.wrapS = THREE.RepeatWrapping;
+				checkerTex.wrapT = THREE.RepeatWrapping;
+				checkerTex.repeat.set( 4, 4);
+
+
+
+				const defaultMat = new THREE.MeshPhysicalMaterial( {
+					roughness: 0,
+					envMap: cubeRenderTarget.texture,
+					roughnessMap: rMap
+
+				} );
+
+				const boxProjectedMat = new THREE.MeshPhysicalMaterial( {
+					color: new THREE.Color( '#ffffff' ),
+					roughness: .5,
+					envMap: cubeRenderTarget.texture,
+					roughnessMap: rMap,
+					bumpMap: checkerTex,
+					bumpScale: 0.05,
+				} );
+
+				boxProjectedMat.onBeforeCompile = obc;
+
+				groundPlane = new THREE.Mesh( new THREE.PlaneGeometry( 300, 200, 1 ), boxProjectedMat );
+				groundPlane.rotateX( - Math.PI / 2 );
+				groundPlane.position.set( 0, - 49, 0 );
+				scene.add( groundPlane );
+
+
+
 				bumpTex.wrapS = THREE.RepeatWrapping;
 				bumpTex.wrapT = THREE.RepeatWrapping;
 				bumpTex.repeat.set( 4, 4);
@@ -400,7 +416,7 @@
 
 
 				video = document.getElementById( 'video' );
-				video.muted = false;
+				video.muted = true;
 				video.play();
 
 				videoTex = new THREE.VideoTexture( video );
@@ -420,7 +436,7 @@
 					bumpMap: bumpTex,
 					bumpScale: 0.1,
 					roughness:0,
-					metalness:.5,
+					metalness:.2,
 
 
 				} );
@@ -445,17 +461,17 @@
 
 
 
-				const planeGeo = new THREE.PlaneGeometry( 200, 200 );
+				const planeGeo = new THREE.PlaneGeometry( 300, 300 );
 
 
 				planeLeft = new THREE.Mesh( planeGeo, wallMat );
-				planeLeft.position.z = - 100;
+				planeLeft.position.z = - 150;
 				planeLeft.position.x = 0;
 				planeLeft.position.y = 50;
 				scene.add( planeLeft );
 
 				planeRight = new THREE.Mesh( planeGeo, wallMat );
-				planeRight.position.z = 100;
+				planeRight.position.z = 150;
 				planeRight.position.x = 0;
 				planeRight.position.y = 50;
 				planeRight.rotateY( Math.PI );
@@ -469,11 +485,20 @@
 				scene.add( planeBack );
 
 				planeTop = new THREE.Mesh( planeGeo, ceilingMat );
-				planeTop.scale.set(.99,.99,1);
+				planeTop.scale.set(.95,.95,1);
 				planeTop.position.x = 0;
-				planeTop.position.y = 100;
+				planeTop.position.y = 150;
 				planeTop.rotateX( Math.PI / 2 );
 				scene.add( planeTop );
+
+
+				const planeBot = new THREE.Mesh( planeGeo, ceilingMat );
+				planeBot.position.x = 0;
+				planeBot.position.y = -100;
+				planeBot.rotateX( Math.PI / 2 );
+				planeBot.rotateY( Math.PI );
+				scene.add( planeBot );
+
 
 
 				const nftGeo = new THREE.PlaneGeometry( 100, 100 );
@@ -501,6 +526,7 @@
 				const intensity = 2;
 
 				ambLight = new THREE.AmbientLight( 0x404040, .1 ); // soft white light
+				ambLight.shadowMap = true;
 				scene.add(ambLight);
 
 				RectAreaLightUniformsLib.init();
@@ -509,30 +535,8 @@
 				frontLight.position.set( -98, 5, 0 );
 				//frontLight.lookAt( 0, 5, 0 );
 				frontLight.lookAt( 0, 5, 0 );
+				frontLight.shadowMap = true;
 				scene.add( frontLight );
-
-				const topLight = new THREE.RectAreaLight( 0xfff6c9, intensity*.4, 200, 200 );
-				topLight.position.set( 0, 101, 0 );
-				//planeTop.position.y = 100;
-				topLight.rotateX( Math.PI / 2 );
-				topLight.lookAt( 0, 0, 0 );
-
-				const topLightHelper = new RectAreaLightHelper( topLight );
-				topLightHelper.color = topLight.color;
-				topLight.add( topLightHelper );
-
-
-				//TopLight.rotateZ( Math.PI  );
-
-				//TopLight.rotateY( Math.PI / 2 );
-				//frontLight2.rotateX( .01 );
-				//frontLight2.lookAt( 0, 0, 0 );
-				//frontLight.lookAt( 0, 5, 0 );
-
-
-				scene.add( topLight );
-
-
 
 
 				// poST PROC
@@ -540,15 +544,8 @@
 				composer = new EffectComposer(renderer);
 				composer.addPass(new RenderPass(scene, camera));
 
-				const bloomPass = new BloomPass(
-						1,    // strength
-						32,   // kernel size
-						8,    // sigma ?
-						2048,  // blur render target resolution
-				);
-				//composer.addPass(bloomPass);
 				const filmPass = new FilmPass(
-						0.2,   // noise intensity
+						0.5,   // noise intensity
 						0,  // scanline intensity
 						0,    // scanline count
 						false,  // grayscale
@@ -633,7 +630,7 @@
 				frontLight.color.setRGB(avg[0]/255,avg[1]/255,avg[2]/255);
 				ambLight.color = 	frontLight.color;
 				frontLight.color.offsetHSL(0,0,.1);
-				//scene.fog.color =	frontLight.color;
+				scene.fog.color =	frontLight.color;
 				document.getElementById("info").style.color = rgb(avg[0],avg[1],avg[2]);
 				//console.log(avg);
 				renderer.setRenderTarget(null);
