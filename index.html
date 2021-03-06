@@ -932,9 +932,11 @@
 			function rotateNFTs () {
 				if (nftArray.length > 1) {
 					currentNFT = currentNFT+1;
+					video.muted = true;
 					var vid = nftArray[currentNFT%nftArray.length].element
 					vid.play();
 					loadNFT(vid);
+					vid.muted = false;
 					//console.log(vid);
 
 
