@@ -35,6 +35,7 @@
 
 			import {EffectComposer} from './jsm/postprocessing/EffectComposer.js';
 			import {RenderPass} from './jsm/postprocessing/RenderPass.js';
+			import { SMAAPass } from './jsm/postprocessing/SMAAPass.js';
 			import {BloomPass} from './jsm/postprocessing/BloomPass.js';
 			import {FilmPass} from './jsm/postprocessing/FilmPass.js';
 
@@ -228,7 +229,7 @@
 
 			let stats;
 
-			let composer;
+			let composer, smaapass;
 
 
 
@@ -324,16 +325,18 @@
 				// scene
 				scene = new THREE.Scene();
 
-	  		scene.fog = new THREE.Fog(0x000000, 150,300);
+	  		scene.fog = new THREE.Fog(0x333333, 150,300);
 
 				// camera
 				camera = new THREE.PerspectiveCamera( VIEW_ANGLE, ASPECT, NEAR, FAR );
-				camera.position.set( 120, -30,0 );
+				camera.position.set( 80, -30,0 );
 				camera.rotation.set(0,0,-2);
+
 
 				cameraControls = new OrbitControls( camera, renderer.domElement );
 				cameraControls.maxDistance = 400;
 				cameraControls.minDistance = 10;
+				cameraControls.enableDamping = true;
 				cameraControls.addEventListener( 'change', render );
 
 				//cameraControls.update();
@@ -347,7 +350,7 @@
 					generateMipmaps: true,
 					minFilter: THREE.LinearMipmapLinearFilter
 				} );
-				cubeCamera = new THREE.CubeCamera( 1, 1000, cubeRenderTarget );
+				cubeCamera = new THREE.CubeCamera( 1, 100, cubeRenderTarget );
 
 				cubeCamera.position.set( 0, - 100, 0 );
 				scene.add( cubeCamera );
@@ -362,18 +365,14 @@
 				// walls
 				const diffuseTex = loader.load( 'textures/brick_diffuse.jpg', function () {
 
-					updateCubeMap();
-
 				} );
 				const bumpTex = loader.load( 'textures/brick_bump.jpg', function () {
 
-					updateCubeMap();
 
 				} );
 
 				const checkerTex = loader.load( 'textures/floors/FloorsCheckerboard_S_Diffuse.jpg', function () {
 
-					updateCubeMap();
 
 				} );
 				checkerTex.wrapS = THREE.RepeatWrapping;
@@ -391,7 +390,7 @@
 
 				const boxProjectedMat = new THREE.MeshPhysicalMaterial( {
 					color: new THREE.Color( '#ffffff' ),
-					roughness: .5,
+					roughness: .8,
 					envMap: cubeRenderTarget.texture,
 					roughnessMap: rMap,
 					bumpMap: checkerTex,
@@ -551,7 +550,15 @@
 						false,  // grayscale
 				);
 				filmPass.renderToScreen = true;
+
 				composer.addPass(filmPass);
+
+
+				const smaapass = new SMAAPass(
+				window.innerWidth * renderer.getPixelRatio(),
+				window.innerHeight * renderer.getPixelRatio()
+			);
+				composer.addPass(smaapass);
 
 
 			}
@@ -583,17 +590,24 @@
 
 
 			function onWindowResize() {
-				const canvas = renderer.domElement;
-				camera.aspect = canvas.clientWidth / canvas.clientHeight;
-				camera.updateProjectionMatrix();
-				composer.setSize(canvas.width, canvas.height);
 
-		}
+				const width = window.innerWidth;
+				const height = window.innerHeight;
+
+				camera.aspect = width / height;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( width, height );
+				composer.setSize( width, height );
+
+			}
+
 
 			function animate() {
 
-				requestAnimationFrame( animate );
 
+				requestAnimationFrame( animate );
+				cameraControls.update();
 				render();
 				stats.update();
 
@@ -601,6 +615,10 @@
 			function rgb(r, g, b){
   			return "rgb("+r+","+g+","+b+")";
 			}
+
+
+
+			AVG_SAMPLES = 20;
 
 			function render() {
 				const time = clock.getElapsedTime();
@@ -631,9 +649,13 @@
 				ambLight.color = 	frontLight.color;
 				frontLight.color.offsetHSL(0,0,.1);
 				scene.fog.color =	frontLight.color;
-				document.getElementById("info").style.color = rgb(avg[0],avg[1],avg[2]);
+				//document.getElementById("info").style.color = rgb(avg[0],avg[1],avg[2]);
 				//console.log(avg);
 				renderer.setRenderTarget(null);
+
+				camera.position.x += .1*Math.sin(time);
+				camera.position.z += .05*Math.cos(time*.2);
+				//camera.position.y += .05*Math.cos(time*.1);
 
 
 
