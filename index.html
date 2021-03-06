@@ -400,13 +400,15 @@
 
 			}
 
-			function loadNFT(video) {
-
-				videoTex = new THREE.VideoTexture( video );
+			function loadNFT(vid) {
 
 
 
-				const aspect = video.videoWidth / video.videoHeight;
+				videoTex = new THREE.VideoTexture( vid );
+
+
+
+				const aspect = vid.videoWidth / vid.videoHeight;
 				console.log(aspect);
 				nft.scale.set(1,1/aspect,1);
 
@@ -932,10 +934,9 @@
 			function rotateNFTs () {
 				if (nftArray.length > 1) {
 					currentNFT = currentNFT+1;
-					video.muted = true;
 					var vid = nftArray[currentNFT%nftArray.length].element
 					vid.play();
-					vid.muted = false;
+					//vid.muted = false;
 					loadNFT(vid);
 
 					//console.log(vid);
