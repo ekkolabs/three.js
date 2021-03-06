@@ -12,36 +12,55 @@
 		<div id="info">
 		Testing NFT gallery <br> <a id="next" href="#">Next NFT</a>
 		</div>
-		<video id="video1" loop crossOrigin="anonymous" playsinline style="display:none"  muted>
+		<div class="nft nftvideo" id="nft1">
+			<video id="video1" loop crossOrigin="anonymous" playsinline style="display:none"  muted>
 
-				<source src="https://stream.mux.com/kOHbRiWtS9SK9d01llu1DyYsyUKePjx02xN7Ru7UR00007g/high.mp4" >
-				<!--<source src="https://stream.mux.com/kEoeZ7GjCjKKpwrQTk3902Gxx6ZqLnYKdmeLvZbvfbUY/high.mp4">-->
+					<source src="https://stream.mux.com/kOHbRiWtS9SK9d01llu1DyYsyUKePjx02xN7Ru7UR00007g/high.mp4" >
+					<!--<source src="https://stream.mux.com/kEoeZ7GjCjKKpwrQTk3902Gxx6ZqLnYKdmeLvZbvfbUY/high.mp4">-->
 
-		</video>
-		<video id="video2" loop crossOrigin="anonymous" playsinline style="display:none"  muted>
+			</video>
+		</div>
 
-				<source src="https://stream.mux.com/M0202tmfYFdJU00U7fRX5001101rCRNLH2mfUNV9CPxQQ4NA/high.mp4">
+		<div class="nft nftvideo" id="nft2">
 
-		</video>
+			<video id="video2" loop crossOrigin="anonymous" playsinline style="display:none"  muted>
 
-		<video id="video3" loop crossOrigin="anonymous" playsinline style="display:none"  muted>
+					<source src="https://stream.mux.com/M0202tmfYFdJU00U7fRX5001101rCRNLH2mfUNV9CPxQQ4NA/high.mp4">
 
-				<source src="https://stream.mux.com/dPI4Au00Jo02MpQYmUo02VmiOXs3ERuFWryH3VYqhRI3H4/high.mp4">
+			</video>
+		</div>
+		<div class="nft nftvideo" id="nft3">
 
-		</video>
+			<video id="video3" loop crossOrigin="anonymous" playsinline style="display:none"  muted>
 
-		<video id="video4" loop crossOrigin="anonymous" playsinline style="display:none"  muted>
+						<source src="https://stream.mux.com/dPI4Au00Jo02MpQYmUo02VmiOXs3ERuFWryH3VYqhRI3H4/high.mp4">
 
-				<source src="https://stream.mux.com/u02LEmwQNsE00e7kYoRLmxTAlVyKWr2gaV52J600SP00u01g/high.mp4">
+			</video>
+		</div>
+		<div class="nft nftvideo" id="nft4">
 
-		</video>
+			<video id="video4" loop crossOrigin="anonymous" playsinline style="display:none"  muted>
 
-		<video id="video5" loop crossOrigin="anonymous" playsinline style="display:none"  muted>
+					<source src="https://stream.mux.com/u02LEmwQNsE00e7kYoRLmxTAlVyKWr2gaV52J600SP00u01g/high.mp4">
 
-				<source src="https://stream.mux.com/vF2P1mv02Kpp8R01EyFd01F025erAS3pvnAAFgKkYYOW5ho/high.mp4">
+			</video>
+		</div>
+		<div class="nft nftvideo" id="nft5">
 
-		</video>
+			<video id="video5" loop crossOrigin="anonymous" playsinline style="display:none"  muted>
 
+					<source src="https://stream.mux.com/vF2P1mv02Kpp8R01EyFd01F025erAS3pvnAAFgKkYYOW5ho/high.mp4">
+
+			</video>
+		</div>
+		<div class="nft nftimage" id="nft6">
+
+			<video id="video6" loop crossOrigin="anonymous" playsinline style="display:none"  muted>
+
+					<source src="https://stream.mux.com/vF2P1mv02Kpp8R01EyFd01F025erAS3pvnAAFgKkYYOW5ho/high.mp4">
+
+			</video>
+		</div>
 
 		<script type="module">
 
@@ -64,8 +83,10 @@
 
 			import {EffectComposer} from './examples/jsm/postprocessing/EffectComposer.js';
 			import {RenderPass} from './examples/jsm/postprocessing/RenderPass.js';
+			import { FXAAShader  } from './examples/jsm/shaders/FXAAShader.js';
 			import { SMAAPass } from './examples/jsm/postprocessing/SMAAPass.js';
 			import {BloomPass} from './examples/jsm/postprocessing/BloomPass.js';
+			import { UnrealBloomPass } from './examples/jsm/postprocessing/UnrealBloomPass.js';
 			import {FilmPass} from './examples/jsm/postprocessing/FilmPass.js';
 			import {ShaderPass} from './examples/jsm/postprocessing/ShaderPass.js';
 			import {NoiseShader} from './examples/jsm/shaders/NoiseShader.js';
@@ -245,7 +266,7 @@
 
 			}
 
-
+			const DEBUG = true;
 			// scene size
 			const WIDTH = window.innerWidth;
 			const HEIGHT = window.innerHeight;
@@ -278,7 +299,7 @@
 
 			let stats;
 
-			let composer, smaapass,filmPass;
+			let composer, fxaaPass,filmPass;
 
 			const AVG_SAMPLES = 50;
 			let colorBuffer;
@@ -286,7 +307,23 @@
 			init();
 			animate();
 
+			function getNFTsFromDOM()
+			{
+				nftArray = Array();
+				var elems = Array.prototype.slice.call( document.getElementsByClassName('nft'));
+				//console.log(elems);
 
+				elems.forEach(function (item,index) {
+					//console.log(item.classList);
+					//if (item.classList.contains('nftvideo')) {
+					var vid = item.firstElementChild;
+					nftArray.push(new NFT(vid));
+					vid.muted = true;
+					vid.pause();
+					//}
+
+				});
+			}
 
 
 		 function obc ( shader ) {
@@ -325,7 +362,7 @@
 
 				const width = 200;
 				const height = 200;
-				const intensity = 1;
+				const intensity = 2;
 				const thickness = 4
 				const depth = 20
 
@@ -341,8 +378,6 @@
 
 				} );
 
-
-
 				const nftFrameGeoW = new THREE.BoxGeometry( width+thickness*2,thickness,depth );
 				const nftFrameGeoH = new THREE.BoxGeometry( height+thickness*2,thickness,depth );
 				const nftFrameT = new THREE.Mesh (nftFrameGeoW,frameMat);
@@ -357,12 +392,6 @@
 				nftFrameR.position.x = -thickness/2 -width/2;
 				nftFrameR.rotateZ( Math.PI / 2 );
 
-				//nftFrameL.position.z =-104;
-
-				//nftFrameR.rotateZ( Math.PI / 2 );
-				//nftFrameR.position.set(-96,52,104);
-
-
 				scene.add( nftFrameT );
 				scene.add( nftFrameL );
 				scene.add( nftFrameB );
@@ -375,16 +404,9 @@
 				nft.attach(nftFrameR);
 
 
-
-
 				RectAreaLightUniformsLib.init();
 
 				lightBox1 = new THREE.RectAreaLight( 0xaaaaaa, intensity, width, height );
-				//lightBox1.position.set( -98, 55, -100 );
-				//lightBox1.lookAt( 0, 5, 0 );
-				//lightBox1.lookAt( 0, 55, 0 );
-				//lightBox1.rotateY( Math.PI / 2 );
-				//lightBox1.castShadow = true;
 
 				// attach to NFT
 
@@ -405,11 +427,12 @@
 
 
 				videoTex = new THREE.VideoTexture( vid );
+				videoTex.encoding = THREE.LinearEncoding ;
 
 
 
 				const aspect = vid.videoWidth / vid.videoHeight;
-				console.log(aspect);
+				//console.log(aspect);
 				nft.scale.set(1,1/aspect,1);
 
 				nftMat.emissiveMap = videoTex;
@@ -441,78 +464,33 @@
 				renderer = new THREE.WebGLRenderer( { antialias: true } );
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( WIDTH, HEIGHT );
+				//renderer.gammaOutput = true;
+				//renderer.gammaFactor = 2.2;
+				//renderer.outputEncoding = THREE.sRGBEncoding;
 
 
-				nftArray = Array();
-				// populate array with NFTs passed
-
-				video = document.getElementById( 'video1' );
-				video.muted = true;
-
-
-				nftArray.push(new NFT(video));
-
-				video = document.getElementById( 'video2' );
-				video.muted = true;
-				nftArray.push(new NFT(video));
-
-				video = document.getElementById( 'video3' );
-				video.muted = true;
-				nftArray.push(new NFT(video));
-
-				video = document.getElementById( 'video4' );
-				video.muted = true;
-				nftArray.push(new NFT(video));
-
-				video = document.getElementById( 'video5' );
-				video.muted = true;
-				nftArray.push(new NFT(video));
-
+				getNFTsFromDOM();
 
 				video = nftArray[0].element
 				video.play();
 
-
-
-				renderer.outputEncoding = THREE.sRGBEncoding;
 
 				//renderer.shadowMap.enabled = true;
 
 				container.appendChild( renderer.domElement );
 
 				stats = new Stats();
-				container.appendChild( stats.dom );
+				if (DEBUG) {
+					container.appendChild( stats.dom );
+				}
 
 				window.addEventListener( 'resize', onWindowResize );
 
-				// gui controls
-				const gui = new GUI();
-				const params = {
-					'box projected': true,
-
-				};
-				const bpcemGui = gui.add( params, 'box projected' );
-
-				bpcemGui.onChange( function ( value ) {
-
-					if ( value ) {
-
-						groundPlane.material = boxProjectedMat;
-
-					} else {
-
-						groundPlane.material = defaultMat;
-
-					}
-
-					render();
-
-				} );
 
 				// scene
 				scene = new THREE.Scene();
 
-	  		scene.fog = new THREE.Fog(0x333333, 150,300);
+	  		scene.fog = new THREE.Fog(0x333333, 200,300);
 
 				// camera
 				camera = new THREE.PerspectiveCamera( VIEW_ANGLE, ASPECT, NEAR, FAR );
@@ -548,6 +526,7 @@
 				// ground floor ( with box projected environment mapping )
 				const loader = new THREE.TextureLoader();
 				const rMap = loader.load( 'examples/textures/lava/lavatile.jpg' );
+				rMap.encoding = THREE.sRGBEncoding;
 				rMap.wrapS = THREE.RepeatWrapping;
 				rMap.wrapT = THREE.RepeatWrapping;
 				rMap.repeat.set( 2, 2);
@@ -556,10 +535,14 @@
 				const diffuseTex = loader.load( 'examples/textures/brick_diffuse.jpg', function () {
 						updateCubeMap();
 				} );
+
+				diffuseTex.encoding = THREE.sRGBEncoding;
+
 				const bumpTex = loader.load( 'examples/textures/brick_bump.jpg', function () {
 						updateCubeMap();
 
 				} );
+				bumpTex.encoding = THREE.sRGBEncoding;
 
 				const checkerTex = loader.load( 'examples/textures/floors/FloorsCheckerboard_S_Diffuse.jpg', function () {
 
@@ -568,6 +551,7 @@
 				checkerTex.wrapS = THREE.RepeatWrapping;
 				checkerTex.wrapT = THREE.RepeatWrapping;
 				checkerTex.repeat.set( 4, 4);
+				checkerTex.encoding = THREE.sRGBEncoding;
 
 
 
@@ -616,8 +600,6 @@
 
 
 
-
-
 				// scene init
 
 
@@ -641,8 +623,6 @@
 					side: THREE.DoubleSide
 
 				} );
-
-
 
 
 
@@ -776,8 +756,8 @@
 
 				const benchMat = new THREE.MeshPhysicalMaterial( {
 					color: 0xffffff,
-					roughness:.2,
-					metalness:1.0,
+					roughness:0,
+					metalness:.5,
 				} );
 
 
@@ -804,8 +784,22 @@
 				// poST PROC
 
 				composer = new EffectComposer(renderer);
-				composer.addPass(new RenderPass(scene, camera));
 
+
+				fxaaPass = new ShaderPass( FXAAShader );
+
+				const pixelRatio = renderer.getPixelRatio();
+
+				fxaaPass.material.uniforms[ 'resolution' ].value.x = 1 / ( window.innerWidth* pixelRatio );
+				fxaaPass.material.uniforms[ 'resolution' ].value.y = 1 / ( window.innerHeight * pixelRatio );
+
+
+
+
+				const bloomPass = new UnrealBloomPass( new THREE.Vector2( window.innerWidth, window.innerHeight ), 1.5, 0.4, 0.85 );
+				bloomPass.threshold = 0;
+				bloomPass.strength = .2;
+				bloomPass.radius = 4;
 
 
 
@@ -818,24 +812,11 @@
 				);
 				filmPass.renderToScreen = false;
 
+
+				composer.addPass(new RenderPass(scene, camera));
+				composer.addPass(fxaaPass);
+				composer.addPass(bloomPass );
 				composer.addPass(filmPass);
-
-				const superPass = new ShaderPass( SuperShader );
-				superPass.uniforms.glowAmount.value = 0;
-				superPass.uniforms.vigOffset.value = .5;
-				superPass.uniforms.saturation.value = 0;
-				superPass.uniforms.contrast.value = 0;
-				superPass.uniforms.brightness.value = 0;
-				superPass.uniforms.vigDarkness.value = -1;
-				superPass.uniforms.rgbShiftAmount.value = .0;
-				composer.addPass(superPass);
-
-				const smaapass = new SMAAPass(
-				window.innerWidth * renderer.getPixelRatio(),
-				window.innerHeight * renderer.getPixelRatio()
-			);
-				composer.addPass(smaapass);
-
 
 
 				colorBuffer = new Array();
@@ -885,6 +866,11 @@
 				renderer.setSize( width, height );
 				composer.setSize( width, height );
 
+				const pixelRatio = renderer.getPixelRatio();
+
+				fxaaPass.material.uniforms[ 'resolution' ].value.x = 1 / ( width * pixelRatio );
+				fxaaPass.material.uniforms[ 'resolution' ].value.y = 1 / ( height * pixelRatio );
+
 			}
 
 
@@ -895,7 +881,7 @@
 				TWEEN.update()
 				cameraControls.update();
 				render();
-				stats.update();
+				if (DEBUG) {	stats.update(); }
 
 			}
 
@@ -922,8 +908,9 @@
 				avg[0] = avg[0]/colorBuffer.length;
 				avg[1] = avg[1]/colorBuffer.length;
 				avg[2] = avg[2]/colorBuffer.length;
-				return avg
 
+
+				return avg
 
 			}
 
@@ -1001,8 +988,7 @@
 				renderer.setRenderTarget(null);
 
 				//camera.position.x += .1*Math.sin(time);
-				camera.position.z += .25*Math.cos(time*.2);
-				camera.position.y = 20*Math.cos(time*.2);
+
 				//camera.lookAt(nft);
 				//camera.position.y += .05*Math.cos(time*.1);
 
@@ -1012,7 +998,8 @@
 
 				composer.render();
 				//renderer.render( scene, camera );
-
+				camera.position.z += .25*Math.cos(time*.2);
+				camera.position.y = 20*Math.cos(time*.2);
 
 				//console.log(cameraControls);
 
