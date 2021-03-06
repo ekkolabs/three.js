@@ -12,8 +12,11 @@
 		<div id="info">
 		Testing NFT gallery <br> Demo Scene
 		</div>
-		<video id="video" loop crossOrigin="anonymous" playsinline style="display:none" muted>
-					<source src="https://stream.mux.com/wnX6xV00qdqBzOj01kCWeXHtp02WF4Mc56Lg78YgyPev84/high.mp4">
+		<video id="video" loop crossOrigin="anonymous" playsinline style="display:none" autoplay muted>
+
+				<source src="https://stream.mux.com/kOHbRiWtS9SK9d01llu1DyYsyUKePjx02xN7Ru7UR00007g/high.mp4" muted>
+				<!--<source src="https://stream.mux.com/kEoeZ7GjCjKKpwrQTk3902Gxx6ZqLnYKdmeLvZbvfbUY/high.mp4">-->
+
 					<source src="textures/sintel.mp4" type='video/mp4; codecs="avc1.42E01E, mp4a.40.2"'>
 		</video>
 
@@ -22,12 +25,18 @@
 
 			import * as THREE from '../build/three.module.js';
 
+			import Stats from './jsm/libs/stats.module.js';
+
 			import { GUI } from './jsm/libs/dat.gui.module.js';
 			import { OrbitControls } from './jsm/controls/OrbitControls.js';
 			import { RectAreaLightHelper } from './jsm/helpers/RectAreaLightHelper.js';
 			import { RectAreaLightUniformsLib } from './jsm/lights/RectAreaLightUniformsLib.js';
-			import { OBJLoader } from './jsm/loaders/OBJLoader.js';
+			//import { OBJLoader } from './jsm/loaders/OBJLoader.js';
 
+			import {EffectComposer} from './jsm/postprocessing/EffectComposer.js';
+			import {RenderPass} from './jsm/postprocessing/RenderPass.js';
+			import {BloomPass} from './jsm/postprocessing/BloomPass.js';
+			import {FilmPass} from './jsm/postprocessing/FilmPass.js';
 
 			// shader injection for box projected cube environment mapping
 			const worldposReplace = /* glsl */`
@@ -187,51 +196,7 @@
 			#endif
 			`;
 
-			function getAverageRGB(imgEl) {
 
-			    var blockSize = 5, // only visit every 5 pixels
-			        defaultRGB = {r:0,g:0,b:0}, // for non-supporting envs
-			        canvas = document.createElement('canvas'),
-			        context = canvas.getContext && canvas.getContext('2d'),
-			        data, width, height,
-			        i = -4,
-			        length,
-			        rgb = {r:0,g:0,b:0},
-			        count = 0;
-
-			    if (!context) {
-			        return defaultRGB;
-			    }
-
-			    height = canvas.height = imgEl.naturalHeight || imgEl.offsetHeight || imgEl.height;
-			    width = canvas.width = imgEl.naturalWidth || imgEl.offsetWidth || imgEl.width;
-
-			    context.drawImage(imgEl, 0, 0);
-
-			    try {
-			        data = context.getImageData(0, 0, width, height);
-			    } catch(e) {
-			        /* security error, img on diff domain */
-			        return defaultRGB;
-			    }
-
-			    length = data.data.length;
-
-			    while ( (i += blockSize * 4) < length ) {
-			        ++count;
-			        rgb.r += data.data[i];
-			        rgb.g += data.data[i+1];
-			        rgb.b += data.data[i+2];
-			    }
-
-			    // ~~ used to floor values
-			    rgb.r = ~~(rgb.r/count);
-			    rgb.g = ~~(rgb.g/count);
-			    rgb.b = ~~(rgb.b/count);
-
-			    return rgb;
-
-			}
 
 
 			// scene size
@@ -243,21 +208,66 @@
 			const ASPECT = WIDTH / HEIGHT;
 			const NEAR = 1;
 			const FAR = 800;
+			const FOG_DENSITY = 0.003;
+			const WALLMAT_ROUGHNESS = 0.6;
 
 			let camera, cubeCamera, scene, renderer, clock;
 
 			let cameraControls;
 
-			let groundPlane, wallMat, nftMat;
+			let groundPlane, wallMat, ceilingMat, nftMat;
+			let planeLeft,planeRight,planeBack,planeTop;
 
-			let video;
+			let video, videoTex;
+
+			let frontLight,ambLight;
 
 			let object;
+
+			let pixRenderTarget,pixScene,pixCam;
+
+			let stats;
+
+			let composer;
 
 
 
 			init();
 			animate();
+
+
+
+		 function obc ( shader ) {
+
+				//these parameters are for the cubeCamera texture
+				shader.uniforms.cubeMapSize = { value: new THREE.Vector3( 200, 200, 200 ) };
+				shader.uniforms.cubeMapPos = { value: new THREE.Vector3( 0, - 50, 0 ) };
+
+				//replace shader chunks with box projection chunks
+				shader.vertexShader = 'varying vec3 vWorldPosition;\n' + shader.vertexShader;
+
+				shader.vertexShader = shader.vertexShader.replace(
+					'#include <worldpos_vertex>',
+					worldposReplace
+				);
+
+				shader.fragmentShader = shader.fragmentShader.replace(
+					'#include <envmap_physical_pars_fragment>',
+					envmapPhysicalParsReplace
+				);
+
+			};
+
+			function initRt () {
+
+				pixRenderTarget = new THREE.WebGLRenderTarget(3, 3);
+				pixCam = new THREE.PerspectiveCamera(75, 1, .1, 5);
+				pixCam.position.z = 2;
+
+				pixScene = new THREE.Scene();
+				pixScene.background = videoTex;
+
+			}
 
 			function init() {
 
@@ -269,12 +279,28 @@
 				renderer = new THREE.WebGLRenderer( { antialias: true } );
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( WIDTH, HEIGHT );
+
+
+
+
+
+
+				//renderer.outputEncoding = THREE.sRGBEncoding;
+
+				//renderer.shadowMap.enabled = true;
+
 				container.appendChild( renderer.domElement );
+
+				stats = new Stats();
+				container.appendChild( stats.dom );
+
+				window.addEventListener( 'resize', onWindowResize );
 
 				// gui controls
 				const gui = new GUI();
 				const params = {
-					'box projected': true
+					'box projected': true,
+
 				};
 				const bpcemGui = gui.add( params, 'box projected' );
 
@@ -297,6 +323,8 @@
 				// scene
 				scene = new THREE.Scene();
 
+	  		scene.fog = new THREE.FogExp2(0x000000, FOG_DENSITY);
+
 				// camera
 				camera = new THREE.PerspectiveCamera( VIEW_ANGLE, ASPECT, NEAR, FAR );
 				camera.position.set( 120, -30,0 );
@@ -310,6 +338,8 @@
 				//cameraControls.update();
 
 				// cube camera for environment map
+
+			const renderTarget = new THREE.WebGLRenderTarget(1, 1);
 
 				const cubeRenderTarget = new THREE.WebGLCubeRenderTarget( 512, {
 					format: THREE.RGBFormat,
@@ -342,26 +372,7 @@
 					roughnessMap: rMap
 				} );
 
-				boxProjectedMat.onBeforeCompile = function ( shader ) {
-
-					//these parameters are for the cubeCamera texture
-					shader.uniforms.cubeMapSize = { value: new THREE.Vector3( 200, 200, 200 ) };
-					shader.uniforms.cubeMapPos = { value: new THREE.Vector3( 0, - 50, 0 ) };
-
-					//replace shader chunks with box projection chunks
-					shader.vertexShader = 'varying vec3 vWorldPosition;\n' + shader.vertexShader;
-
-					shader.vertexShader = shader.vertexShader.replace(
-						'#include <worldpos_vertex>',
-						worldposReplace
-					);
-
-					shader.fragmentShader = shader.fragmentShader.replace(
-						'#include <envmap_physical_pars_fragment>',
-						envmapPhysicalParsReplace
-					);
-
-				};
+				boxProjectedMat.onBeforeCompile = obc;
 
 				groundPlane = new THREE.Mesh( new THREE.PlaneGeometry( 200, 200, 1 ), boxProjectedMat );
 				groundPlane.rotateX( - Math.PI / 2 );
@@ -382,19 +393,23 @@
 
 				bumpTex.wrapS = THREE.RepeatWrapping;
 				bumpTex.wrapT = THREE.RepeatWrapping;
-				diffuseTex.repeat.set( 2, 2);
+				bumpTex.repeat.set( 4, 4);
 				diffuseTex.wrapS = THREE.RepeatWrapping;
 				diffuseTex.wrapT = THREE.RepeatWrapping;
 				diffuseTex.repeat.set( 2, 2);
 
 
 				video = document.getElementById( 'video' );
+				video.muted = false;
 				video.play();
 
-				const videoTex = new THREE.VideoTexture( video );
+				videoTex = new THREE.VideoTexture( video );
 				videoTex.wrapS = THREE.RepeatWrapping;
 				videoTex.wrapT = THREE.RepeatWrapping;
 				rMap.repeat.set( 2, .2);
+
+				initRt();
+
 
 				//diffuseTex.repeat.set(2,2);
 				//bumpTex.repeat.set(2,2);
@@ -405,8 +420,17 @@
 					bumpMap: bumpTex,
 					bumpScale: 0.1,
 					roughness:0,
-					metalness:.5
+					metalness:.5,
+
+
 				} );
+				ceilingMat = new THREE.MeshPhysicalMaterial( {
+					metalness:0,
+					color: new THREE.Color( '#ffffff' ),
+					roughness: .2,
+
+				} );
+
 
 
 
@@ -420,33 +444,36 @@
 				} );
 
 
+
 				const planeGeo = new THREE.PlaneGeometry( 200, 200 );
 
-				const planeBack1 = new THREE.Mesh( planeGeo, wallMat );
-				//planeBack1.position.z = -100;
-				//planeBack1.position.x = - 50;
-				//scene.add( planeBack1 );
 
-				const planeBack2 = new THREE.Mesh( planeGeo, wallMat );
-				planeBack2.position.z = - 100;
-				planeBack2.position.x = 0;
-				planeBack2.position.y = 50;
-				scene.add( planeBack2 );
-
-				const planeFront1 = new THREE.Mesh( planeGeo, wallMat );
-				planeFront1.position.z = 100;
-				planeFront1.position.x = 0;
-				planeFront1.position.y = 50;
-				planeFront1.rotateY( Math.PI );
-				scene.add( planeFront1 );
-
-
-				const planeLeft = new THREE.Mesh( planeGeo, wallMat );
-				planeLeft.position.x = - 100;
+				planeLeft = new THREE.Mesh( planeGeo, wallMat );
+				planeLeft.position.z = - 100;
+				planeLeft.position.x = 0;
 				planeLeft.position.y = 50;
-				planeLeft.rotateY( Math.PI / 2 );
 				scene.add( planeLeft );
 
+				planeRight = new THREE.Mesh( planeGeo, wallMat );
+				planeRight.position.z = 100;
+				planeRight.position.x = 0;
+				planeRight.position.y = 50;
+				planeRight.rotateY( Math.PI );
+				scene.add( planeRight );
+
+
+				planeBack = new THREE.Mesh( planeGeo, wallMat );
+				planeBack.position.x = - 100;
+				planeBack.position.y = 50;
+				planeBack.rotateY( Math.PI / 2 );
+				scene.add( planeBack );
+
+				planeTop = new THREE.Mesh( planeGeo, ceilingMat );
+				planeTop.scale.set(.99,.99,1);
+				planeTop.position.x = 0;
+				planeTop.position.y = 100;
+				planeTop.rotateX( Math.PI / 2 );
+				scene.add( planeTop );
 
 
 				const nftGeo = new THREE.PlaneGeometry( 100, 100 );
@@ -455,11 +482,7 @@
 				nft.rotateY( Math.PI / 2 );
 				scene.add( nft );
 
-				const colorSampler = new THREE.Mesh( nftGeo, nftMat );
 
-				colorSampler.rotateY( Math.PI / 2 );
-				colorSampler.scale.set(0.001,0.001,1);
-				scene.add(colorSampler);
 
 
 
@@ -477,27 +500,61 @@
 				const height = 100;
 				const intensity = 2;
 
-				const ambLight = new THREE.AmbientLight( 0x404040, .2 ); // soft white light
+				ambLight = new THREE.AmbientLight( 0x404040, .1 ); // soft white light
 				scene.add(ambLight);
 
 				RectAreaLightUniformsLib.init();
 
-				const frontLight = new THREE.RectAreaLight( 0xaaaaaa, intensity, width, height );
-				frontLight.position.set( -99, 5, 0 );
+				frontLight = new THREE.RectAreaLight( 0xaaaaaa, intensity, width, height );
+				frontLight.position.set( -98, 5, 0 );
+				//frontLight.lookAt( 0, 5, 0 );
 				frontLight.lookAt( 0, 5, 0 );
 				scene.add( frontLight );
 
+				const topLight = new THREE.RectAreaLight( 0xfff6c9, intensity*.4, 200, 200 );
+				topLight.position.set( 0, 101, 0 );
+				//planeTop.position.y = 100;
+				topLight.rotateX( Math.PI / 2 );
+				topLight.lookAt( 0, 0, 0 );
+
+				const topLightHelper = new RectAreaLightHelper( topLight );
+				topLightHelper.color = topLight.color;
+				topLight.add( topLightHelper );
 
 
-				/*const redRectLight = new THREE.RectAreaLight( 0x9aaeff, intensity, width, height );
-				redRectLight.position.set( - 99, 5, 0 );
-				redRectLight.lookAt( 0, 5, 0 );
-				scene.add( redRectLight );
+				//TopLight.rotateZ( Math.PI  );
 
-				const redRectLightHelper = new RectAreaLightHelper( redRectLight );
-				redRectLight.add( redRectLightHelper );
+				//TopLight.rotateY( Math.PI / 2 );
+				//frontLight2.rotateX( .01 );
+				//frontLight2.lookAt( 0, 0, 0 );
+				//frontLight.lookAt( 0, 5, 0 );
 
-				*/
+
+				scene.add( topLight );
+
+
+
+
+				// poST PROC
+
+				composer = new EffectComposer(renderer);
+				composer.addPass(new RenderPass(scene, camera));
+
+				const bloomPass = new BloomPass(
+						1,    // strength
+						32,   // kernel size
+						8,    // sigma ?
+						2048,  // blur render target resolution
+				);
+				//composer.addPass(bloomPass);
+				const filmPass = new FilmPass(
+						0.2,   // noise intensity
+						0,  // scanline intensity
+						0,    // scanline count
+						false,  // grayscale
+				);
+				filmPass.renderToScreen = true;
+				composer.addPass(filmPass);
 
 
 			}
@@ -507,31 +564,87 @@
 				//disable specular highlights on walls in the environment map
 				wallMat.roughness = 1;
 
+				scene.fog.density = 0;
+
 				groundPlane.visible = false;
+				planeTop.visible = false;
 
 				cubeCamera.position.copy( groundPlane.position );
 
 				cubeCamera.update( renderer, scene );
 
-				wallMat.roughness = 0.6;
+
+				scene.fog.density = FOG_DENSITY;
+				wallMat.roughness = WALLMAT_ROUGHNESS;
 
 				groundPlane.visible = true;
+				planeTop.visible = true;
+
 
 			}
+
+
+
+			function onWindowResize() {
+				const canvas = renderer.domElement;
+				camera.aspect = canvas.clientWidth / canvas.clientHeight;
+				camera.updateProjectionMatrix();
+				composer.setSize(canvas.width, canvas.height);
+
+		}
 
 			function animate() {
 
 				requestAnimationFrame( animate );
 
 				render();
+				stats.update();
 
+			}
+			function rgb(r, g, b){
+  			return "rgb("+r+","+g+","+b+")";
 			}
 
 			function render() {
 				const time = clock.getElapsedTime();
 
+				// square
+				renderer.setRenderTarget(pixRenderTarget);
+				renderer.render(pixScene, pixCam);
+				const avg = new Uint32Array(4);
+				const read = new Uint8Array( 4 );
+
+				for (let i = 0; i<3 ;i++ ) {
+					for (let j = 0; i+j<3 ;j++ ) {
+
+						renderer.readRenderTargetPixels( pixRenderTarget, i, j, 1, 1, read );
+						avg[0] += read[0];
+						avg[1] += read[1];
+						avg[2] += read[2];
+
+
+					}
+				}
+				avg[0] = avg[0]/9;
+				avg[1] = avg[1]/9;
+				avg[2] = avg[2]/9;
+
+
+				frontLight.color.setRGB(avg[0]/255,avg[1]/255,avg[2]/255);
+				ambLight.color = 	frontLight.color;
+				frontLight.color.offsetHSL(0,0,.1);
+				//scene.fog.color =	frontLight.color;
+				document.getElementById("info").style.color = rgb(avg[0],avg[1],avg[2]);
+				//console.log(avg);
+				renderer.setRenderTarget(null);
+
+
+
 				updateCubeMap();
-				renderer.render( scene, camera );
+
+				composer.render();
+				//renderer.render( scene, camera );
+
 
 				//console.log(cameraControls);
 
