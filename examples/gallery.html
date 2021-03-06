@@ -10,7 +10,7 @@
 
 		<div id="container"></div>
 		<div id="info">
-		Testing NFT gallery <br> Demo Scene
+		Testing NFT gallery <br> <a id="next" href="#">Next NFT</a>
 		</div>
 		<video id="video1" loop crossOrigin="anonymous" playsinline style="display:none"  muted>
 
@@ -24,6 +24,23 @@
 
 		</video>
 
+		<video id="video3" loop crossOrigin="anonymous" playsinline style="display:none"  muted>
+
+				<source src="https://stream.mux.com/dPI4Au00Jo02MpQYmUo02VmiOXs3ERuFWryH3VYqhRI3H4/high.mp4">
+
+		</video>
+
+		<video id="video4" loop crossOrigin="anonymous" playsinline style="display:none"  muted>
+
+				<source src="https://stream.mux.com/u02LEmwQNsE00e7kYoRLmxTAlVyKWr2gaV52J600SP00u01g/high.mp4">
+
+		</video>
+
+		<video id="video5" loop crossOrigin="anonymous" playsinline style="display:none"  muted>
+
+				<source src="https://stream.mux.com/vF2P1mv02Kpp8R01EyFd01F025erAS3pvnAAFgKkYYOW5ho/high.mp4">
+
+		</video>
 
 
 		<script type="module">
@@ -213,6 +230,20 @@
 			`;
 
 
+			var next = document.getElementById('next');
+
+			next.style.cursor = 'pointer';
+			next.onclick = function() {
+			    rotateNFTs();
+			};
+
+
+			class NFT {
+				constructor (element) {
+					this.element = element;
+				}
+
+			}
 
 
 			// scene size
@@ -231,8 +262,8 @@
 
 			let cameraControls;
 
-			let groundPlane, boxProjectedMat, wallMat, ceilingMat, nftMat;
-			let planeLeft,planeRight,planeBack,planeTop;
+			let groundPlane, boxProjectedMat, wallMat, ceilingMat, nftMat,frameMat;
+			let planeLeft,planeRight,planeBack, planeFront,planeTop;
 
 			let video, videoTex;
 
@@ -241,6 +272,7 @@
 			let torusKnot,character;
 
 			let nft;
+			let nftArray;
 
 			let pixRenderTarget,pixScene,pixCam;
 
@@ -278,6 +310,104 @@
 
 			};
 
+
+			function initArtDisplay() {
+
+				nftMat = new THREE.MeshStandardMaterial( {
+					//emissiveMap : videoTex,
+					emissiveIntensity: 1,
+					color: 0xffffff,
+					emissive: 0xffffff,
+					transparent:true,
+					//side: THREE.DoubleSide,
+
+				} );
+
+				const width = 200;
+				const height = 200;
+				const intensity = 1;
+				const thickness = 4
+				const depth = 20
+
+				const nftGeo = new THREE.PlaneGeometry( width, height );
+				nft = new THREE.Mesh( nftGeo, nftMat );
+
+
+				frameMat = new THREE.MeshPhysicalMaterial( {
+					color: 0xffffff,
+					roughness:.5,
+					metalness:0.5,
+					transparent:true
+
+				} );
+
+
+
+				const nftFrameGeoW = new THREE.BoxGeometry( width+thickness*2,thickness,depth );
+				const nftFrameGeoH = new THREE.BoxGeometry( height+thickness*2,thickness,depth );
+				const nftFrameT = new THREE.Mesh (nftFrameGeoW,frameMat);
+				const nftFrameL = new THREE.Mesh (nftFrameGeoH,frameMat);
+				const nftFrameB = new THREE.Mesh (nftFrameGeoW,frameMat);
+				const nftFrameR = new THREE.Mesh (nftFrameGeoH,frameMat);
+				nftFrameT.position.y =thickness/2+width/2;
+				nftFrameB.position.y =-thickness/2-width/2;
+				nftFrameL.position.x = thickness/2+ width/2 ;
+				nftFrameL.rotateZ( Math.PI / 2 );
+
+				nftFrameR.position.x = -thickness/2 -width/2;
+				nftFrameR.rotateZ( Math.PI / 2 );
+
+				//nftFrameL.position.z =-104;
+
+				//nftFrameR.rotateZ( Math.PI / 2 );
+				//nftFrameR.position.set(-96,52,104);
+
+
+				scene.add( nftFrameT );
+				scene.add( nftFrameL );
+				scene.add( nftFrameB );
+				scene.add( nftFrameR );
+
+				scene.add( nft );
+				nft.attach(nftFrameT);
+				nft.attach(nftFrameB);
+				nft.attach(nftFrameL);
+				nft.attach(nftFrameR);
+
+
+
+
+				RectAreaLightUniformsLib.init();
+
+				lightBox1 = new THREE.RectAreaLight( 0xaaaaaa, intensity, width, height );
+				//lightBox1.position.set( -98, 55, -100 );
+				//lightBox1.lookAt( 0, 5, 0 );
+				//lightBox1.lookAt( 0, 55, 0 );
+				//lightBox1.rotateY( Math.PI / 2 );
+				//lightBox1.castShadow = true;
+
+				// attach to NFT
+
+				nft.attach( lightBox1 );
+				lightBox1.position.z-=1;
+				lightBox1.rotateY( Math.PI );
+
+				nft.position.set( -98, 60, 0 );
+				nft.rotateY( Math.PI / 2 );
+
+			}
+
+			function loadNFT(video) {
+
+				videoTex = new THREE.VideoTexture( video );
+				nftMat.emissiveMap = videoTex;
+				pixScene.background = videoTex;
+
+
+
+			}
+
+			// dominant color buffer for lighting //
 			function initRt () {
 
 				pixRenderTarget = new THREE.WebGLRenderTarget(3, 3);
@@ -301,7 +431,34 @@
 				renderer.setSize( WIDTH, HEIGHT );
 
 
+				nftArray = Array();
+				// populate array with NFTs passed
 
+				video = document.getElementById( 'video1' );
+				video.muted = true;
+
+
+				nftArray.push(new NFT(video));
+
+				video = document.getElementById( 'video2' );
+				video.muted = true;
+				nftArray.push(new NFT(video));
+
+				video = document.getElementById( 'video3' );
+				video.muted = true;
+				nftArray.push(new NFT(video));
+
+				video = document.getElementById( 'video4' );
+				video.muted = true;
+				nftArray.push(new NFT(video));
+
+				video = document.getElementById( 'video5' );
+				video.muted = true;
+				nftArray.push(new NFT(video));
+
+
+				video = nftArray[0].element
+				video.play();
 
 
 
@@ -361,7 +518,7 @@
 
 				// cube camera for environment map
 
-			const renderTarget = new THREE.WebGLRenderTarget(1, 1);
+				const renderTarget = new THREE.WebGLRenderTarget(1, 1);
 
 				const cubeRenderTarget = new THREE.WebGLCubeRenderTarget( 512, {
 					format: THREE.RGBFormat,
@@ -419,7 +576,7 @@
 
 				boxProjectedMat.onBeforeCompile = obc;
 
-				groundPlane = new THREE.Mesh( new THREE.PlaneGeometry( 300, 200, 1 ), boxProjectedMat );
+				groundPlane = new THREE.Mesh( new THREE.PlaneGeometry( 200, 200, 1 ), boxProjectedMat );
 				groundPlane.rotateX( - Math.PI / 2 );
 				groundPlane.position.set( 0, - 49, 0 );
 				groundPlane.receiveShadow  = true;
@@ -429,15 +586,13 @@
 
 				bumpTex.wrapS = THREE.RepeatWrapping;
 				bumpTex.wrapT = THREE.RepeatWrapping;
-				bumpTex.repeat.set( 4, 4);
+				bumpTex.repeat.set( 40, 40);
 				diffuseTex.wrapS = THREE.RepeatWrapping;
 				diffuseTex.wrapT = THREE.RepeatWrapping;
-				diffuseTex.repeat.set( 2, 2);
+				diffuseTex.repeat.set( 20, 20);
 
 
-				video = document.getElementById( 'video1' );
-				video.muted = true;
-				video.play();
+
 
 
 				//video2 = document.getElementById( 'video2' );
@@ -445,22 +600,20 @@
 				//video2.play();
 
 
-				videoTex = new THREE.VideoTexture( video );
-				videoTex.wrapS = THREE.RepeatWrapping;
-				videoTex.wrapT = THREE.RepeatWrapping;
-				rMap.repeat.set( 2, .2);
 
+
+
+				// scene init
+
+
+				initArtDisplay();
 				initRt();
 
-
-				//diffuseTex.repeat.set(2,2);
-				//bumpTex.repeat.set(2,2);
-				//bumpTex.RepeatWrapping
 
 				wallMat = new THREE.MeshPhysicalMaterial( {
 					//map: diffuseTex,
 					bumpMap: bumpTex,
-					bumpScale: 0.1,
+					bumpScale: .2,
 					roughness:0,
 					metalness:.2,
 
@@ -477,17 +630,8 @@
 
 
 
-				nftMat = new THREE.MeshStandardMaterial( {
-					emissiveMap : videoTex,
-					emissiveIntensity: 1,
-					color: 0xffffff,
-					emissive: 0xffffff,
 
-				} );
-
-
-
-				const planeGeo = new THREE.PlaneGeometry( 300, 300 );
+				const planeGeo = new THREE.PlaneGeometry( 3000, 3000 );
 
 
 				planeLeft = new THREE.Mesh( planeGeo, wallMat );
@@ -511,8 +655,15 @@
 				planeBack.position.y = 50;
 				planeBack.rotateY( Math.PI / 2 );
 
-
 				scene.add( planeBack );
+
+				planeFront = new THREE.Mesh( planeGeo, wallMat );
+				planeFront.position.x = 400;
+				//planeFront.position.y = -50;
+				planeFront.rotateY( -Math.PI / 2 );
+
+
+				scene.add( planeFront );
 
 				planeTop = new THREE.Mesh( planeGeo, ceilingMat );
 				planeTop.scale.set(.95,.95,1);
@@ -522,16 +673,21 @@
 
 				scene.add( planeTop );
 
-
+				/*
 				const planeBot = new THREE.Mesh( planeGeo, ceilingMat );
 				planeBot.position.x = 0;
 				planeBot.position.y = -100;
 				planeBot.rotateX( Math.PI / 2 );
 				planeBot.rotateY( Math.PI );
-				scene.add( planeBot );
+				scene.add( planeBot );*/
+
+				const pillarGeo = new THREE.BoxGeometry( 200, 3000, 200 );
+				const pillar =  new THREE.Mesh( pillarGeo, ceilingMat );
+				pillar.position.set(0,-1549.01,0);
+				scene.add( pillar );
 
 
-				const torusMat = new THREE.MeshPhysicalMaterial( {
+				const characterMat = new THREE.MeshPhysicalMaterial( {
 					color: 0xffffff,
 					roughness:.5,
 					metalness:0.5,
@@ -543,7 +699,7 @@
 				/*
 				const torusGeo = new THREE.TorusKnotGeometry( 5, 2, 100, 16 );
 
-				torusKnot = new THREE.Mesh( torusGeo, torusMat );
+				torusKnot = new THREE.Mesh( torusGeo, characterMat );
 				torusKnot.position.y=-45;
 				torusKnot.position.x=-50;
 
@@ -557,7 +713,7 @@
 
 					character.traverse( function ( child ) {
 
-						if ( child.isMesh ) child.material = torusMat;
+						if ( child.isMesh ) child.material = characterMat;
 
 					} );
 
@@ -602,46 +758,31 @@
 
 				//
 
+				const benchMat = new THREE.MeshPhysicalMaterial( {
+					color: 0xffffff,
+					roughness:.2,
+					metalness:1.0,
+				} );
+
+
+				// bench
+
+				const benchGeo = new THREE.BoxGeometry( 10,20,40 );
+				const bench = new THREE.Mesh (benchGeo,benchMat);
+				bench.position.set(-30,-49,0);
+				scene.add(bench);
 
 
 
+				loadNFT(video);
 
 
 
-
-
-				//lights
-				const width = 200;
-				const height = 200;
-				const intensity = .5;
-
-				const nftGeo = new THREE.PlaneGeometry( width, height );
-				nft = new THREE.Mesh( nftGeo, nftMat );
-
-				scene.add( nft );
-
-
-				ambLight = new THREE.AmbientLight( 0x404040, .1 ); // soft white light
+				// ambient Light
+				ambLight = new THREE.AmbientLight( 0x404040, .4 ); // soft white light
 				ambLight.shadowMap = true;
 				scene.add(ambLight);
 
-				RectAreaLightUniformsLib.init();
-
-				lightBox1 = new THREE.RectAreaLight( 0xaaaaaa, intensity, width, height );
-				//lightBox1.position.set( -98, 55, -100 );
-				//lightBox1.lookAt( 0, 5, 0 );
-				//lightBox1.lookAt( 0, 55, 0 );
-				//lightBox1.rotateY( Math.PI / 2 );
-				//lightBox1.castShadow = true;
-
-				// attach to NFT
-
-				nft.attach( lightBox1 );
-				lightBox1.position.z-=1;
-				lightBox1.rotateY( Math.PI );
-
-				nft.position.set( -98, 55, 0 );
-				nft.rotateY( Math.PI / 2 );
 
 
 				// poST PROC
@@ -735,6 +876,7 @@
 
 
 				requestAnimationFrame( animate );
+				TWEEN.update()
 				cameraControls.update();
 				render();
 				stats.update();
@@ -745,11 +887,6 @@
 			function rgb(r, g, b){
   			return "rgb("+r+","+g+","+b+")";
 			}
-
-
-
-
-
 
 
 			function avgColor (color) {
@@ -774,23 +911,21 @@
 
 			}
 
-			function slide(object, target, duration ) {
-
-							TWEEN.removeAll();
-							new TWEEN.Tween(object.position );
 
 
 
-							new TWEEN.Tween( object.position )
-								.to( { x: target.position.x, y: target.position.y, z: target.position.z }, Math.random() * duration + duration )
-								.easing( TWEEN.Easing.Exponential.InOut )
-								.start();
+			let currentNFT = 0;
+			function rotateNFTs () {
+				if (nftArray.length > 1) {
+					currentNFT = currentNFT+1;
+					var vid = nftArray[currentNFT%nftArray.length].element
+					vid.play();
+					loadNFT(vid);
+					//console.log(vid);
 
-							/*new TWEEN.Tween( object.rotation )
-								.to( { x: target.rotation.x, y: target.rotation.y, z: target.rotation.z }, Math.random() * duration + duration )
-								.easing( TWEEN.Easing.Exponential.InOut )
-								.start();
-								*/
+
+				}
+
 			}
 
 
@@ -801,11 +936,13 @@
 
 			function render() {
 				const time = clock.getElapsedTime();
-				nftMat.emissiveIntensity = .5 + .5*Math.sin(time);
-
+				/*nftMat.emissiveIntensity = .5 + .5*Math.sin(time);
+				nftMat.opacity  = .5 + .5*Math.sin(time);
 				lightBox1.intensity = .5 + .5*Math.sin(time);
+				frameMat.opacity  = .5 + .5*Math.sin(time);
+				*/
 
-				filmPass.time = time;
+				filmPass.uniforms.time.value = Math.sin(time);;
 
 				//nft.position.z -= 2*Math.sin(time);
 
@@ -838,7 +975,7 @@
 
 				lightBox1.color.setRGB(avg[0]/255,avg[1]/255,avg[2]/255);
 				ambLight.color = 	lightBox1.color;
-				lightBox1.color.offsetHSL(0,0,.4);
+				lightBox1.color.offsetHSL(0,0,.2);
 				scene.fog.color =	lightBox1.color;
 				scene.fog.color.offsetHSL(0,0,-.2);
 				//document.getElementById("info").style.color = rgb(avg[0],avg[1],avg[2]);

@@ -40,7 +40,7 @@ FilmPass.prototype = Object.assign( Object.create( Pass.prototype ), {
 	render: function ( renderer, writeBuffer, readBuffer, deltaTime /*, maskActive */ ) {
 
 		this.uniforms[ 'tDiffuse' ].value = readBuffer.texture;
-		this.uniforms[ 'time' ].value += deltaTime;
+		this.uniforms[ 'time' ].value = 10+Math.sin(deltaTime*.1);
 
 		if ( this.renderToScreen ) {
 
