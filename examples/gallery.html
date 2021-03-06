@@ -209,7 +209,7 @@
 			const ASPECT = WIDTH / HEIGHT;
 			const NEAR = 1;
 			const FAR = 800;
-			const FOG_DENSITY = 0.013;
+			//const FOG_DENSITY = 0.013;
 			const WALLMAT_ROUGHNESS = 0.4;
 
 			let camera, cubeCamera, scene, renderer, clock;
@@ -231,7 +231,8 @@
 
 			let composer, smaapass;
 
-
+			const AVG_SAMPLES = 50;
+			let colorBuffer;
 
 			init();
 			animate();
@@ -325,7 +326,7 @@
 				// scene
 				scene = new THREE.Scene();
 
-	  		scene.fog = new THREE.Fog(0x333333, 150,300);
+	  		scene.fog = new THREE.Fog(0x333333, 100,300);
 
 				// camera
 				camera = new THREE.PerspectiveCamera( VIEW_ANGLE, ASPECT, NEAR, FAR );
@@ -360,14 +361,14 @@
 				const rMap = loader.load( 'textures/lava/lavatile.jpg' );
 				rMap.wrapS = THREE.RepeatWrapping;
 				rMap.wrapT = THREE.RepeatWrapping;
-				rMap.repeat.set( 2, .2);
+				rMap.repeat.set( 2, 2);
 
 				// walls
 				const diffuseTex = loader.load( 'textures/brick_diffuse.jpg', function () {
-
+						updateCubeMap();
 				} );
 				const bumpTex = loader.load( 'textures/brick_bump.jpg', function () {
-
+						updateCubeMap();
 
 				} );
 
@@ -384,17 +385,19 @@
 				const defaultMat = new THREE.MeshPhysicalMaterial( {
 					roughness: 0,
 					envMap: cubeRenderTarget.texture,
-					roughnessMap: rMap
+					//roughnessMap: rMap
 
 				} );
 
-				const boxProjectedMat = new THREE.MeshPhysicalMaterial( {
+				const boxProjectedMat = new THREE.MeshStandardMaterial( {
 					color: new THREE.Color( '#ffffff' ),
-					roughness: .8,
+
 					envMap: cubeRenderTarget.texture,
 					roughnessMap: rMap,
+					roughness:.5,
+					metalness:.2,
 					bumpMap: checkerTex,
-					bumpScale: 0.05,
+					bumpScale: 0.1,
 				} );
 
 				boxProjectedMat.onBeforeCompile = obc;
@@ -543,22 +546,26 @@
 				composer = new EffectComposer(renderer);
 				composer.addPass(new RenderPass(scene, camera));
 
+
+
 				const filmPass = new FilmPass(
-						0.5,   // noise intensity
+						.34,   // noise intensity
 						0,  // scanline intensity
 						0,    // scanline count
 						false,  // grayscale
 				);
-				filmPass.renderToScreen = true;
+				filmPass.renderToScreen = false;
 
 				composer.addPass(filmPass);
-
 
 				const smaapass = new SMAAPass(
 				window.innerWidth * renderer.getPixelRatio(),
 				window.innerHeight * renderer.getPixelRatio()
 			);
 				composer.addPass(smaapass);
+
+				colorBuffer = new Array();
+
 
 
 			}
@@ -568,7 +575,7 @@
 				//disable specular highlights on walls in the environment map
 				wallMat.roughness = 1;
 
-				scene.fog.density = 0;
+				//scene.fog.density = 0;
 
 				groundPlane.visible = false;
 				planeTop.visible = false;
@@ -578,7 +585,7 @@
 				cubeCamera.update( renderer, scene );
 
 
-				scene.fog.density = FOG_DENSITY;
+				//scene.fog.density = FOG_DENSITY;
 				wallMat.roughness = WALLMAT_ROUGHNESS;
 
 				groundPlane.visible = true;
@@ -612,13 +619,44 @@
 				stats.update();
 
 			}
+
+
 			function rgb(r, g, b){
   			return "rgb("+r+","+g+","+b+")";
 			}
 
 
 
-			AVG_SAMPLES = 20;
+
+
+
+
+			function avgColor (color) {
+				colorBuffer.unshift(color);
+
+				if (colorBuffer.length > AVG_SAMPLES) {
+					colorBuffer.pop();
+				}
+				var avg = new Uint32Array(4);
+				for (var i = 0; i<colorBuffer.length;i++)
+				{
+					avg[0] += colorBuffer[i][0];
+					avg[1] += colorBuffer[i][1];
+					avg[2] += colorBuffer[i][2];
+
+				}
+				avg[0] = avg[0]/colorBuffer.length;
+				avg[1] = avg[1]/colorBuffer.length;
+				avg[2] = avg[2]/colorBuffer.length;
+				return avg
+
+
+			}
+
+
+
+
+
 
 			function render() {
 				const time = clock.getElapsedTime();
@@ -626,7 +664,7 @@
 				// square
 				renderer.setRenderTarget(pixRenderTarget);
 				renderer.render(pixScene, pixCam);
-				const avg = new Uint32Array(4);
+				var avg = new Uint32Array(4);
 				const read = new Uint8Array( 4 );
 
 				for (let i = 0; i<3 ;i++ ) {
@@ -644,11 +682,14 @@
 				avg[1] = avg[1]/9;
 				avg[2] = avg[2]/9;
 
+				avg = avgColor(avg);
+
 
 				frontLight.color.setRGB(avg[0]/255,avg[1]/255,avg[2]/255);
 				ambLight.color = 	frontLight.color;
-				frontLight.color.offsetHSL(0,0,.1);
+				frontLight.color.offsetHSL(0,0,.4);
 				scene.fog.color =	frontLight.color;
+				scene.fog.color.offsetHSL(0,0,-.2);
 				//document.getElementById("info").style.color = rgb(avg[0],avg[1],avg[2]);
 				//console.log(avg);
 				renderer.setRenderTarget(null);
