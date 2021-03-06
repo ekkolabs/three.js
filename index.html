@@ -20,7 +20,7 @@
 		</video>
 		<video id="video2" loop crossOrigin="anonymous" playsinline style="display:none"  muted>
 
-				<source src="https://stream.mux.com/kEoeZ7GjCjKKpwrQTk3902Gxx6ZqLnYKdmeLvZbvfbUY/high.mp4">
+				<source src="https://stream.mux.com/M0202tmfYFdJU00U7fRX5001101rCRNLH2mfUNV9CPxQQ4NA/high.mp4">
 
 		</video>
 
@@ -234,7 +234,7 @@
 
 			next.style.cursor = 'pointer';
 			next.onclick = function() {
-			    rotateNFTs();
+					  rotateNFTs();
 			};
 
 
@@ -395,11 +395,21 @@
 				nft.position.set( -98, 60, 0 );
 				nft.rotateY( Math.PI / 2 );
 
+				cameraControls.target.copy(nft.position);
+				cameraControls.target.y -= 40;
+
 			}
 
 			function loadNFT(video) {
 
 				videoTex = new THREE.VideoTexture( video );
+
+
+
+				const aspect = video.videoWidth / video.videoHeight;
+				console.log(aspect);
+				nft.scale.set(1,1/aspect,1);
+
 				nftMat.emissiveMap = videoTex;
 				pixScene.background = videoTex;
 
@@ -464,7 +474,7 @@
 
 				renderer.outputEncoding = THREE.sRGBEncoding;
 
-				renderer.shadowMap.enabled = true;
+				//renderer.shadowMap.enabled = true;
 
 				container.appendChild( renderer.domElement );
 
@@ -505,16 +515,19 @@
 				// camera
 				camera = new THREE.PerspectiveCamera( VIEW_ANGLE, ASPECT, NEAR, FAR );
 				camera.position.set( 80, -20,0 );
+
 				//camera.rotation.set(0,0,-4);
 
 
 				cameraControls = new OrbitControls( camera, renderer.domElement );
 				cameraControls.maxDistance = 400;
 				cameraControls.minDistance = 10;
-				cameraControls.enableDamping = true;
-				cameraControls.addEventListener( 'change', render );
+				//cameraControls.addEventListener( 'change', render );
+				cameraControls.enablePan = false;
 
-				//cameraControls.update();
+				cameraControls.enableDamping = true;
+
+				cameraControls.update();
 
 				// cube camera for environment map
 
@@ -579,7 +592,7 @@
 				groundPlane = new THREE.Mesh( new THREE.PlaneGeometry( 200, 200, 1 ), boxProjectedMat );
 				groundPlane.rotateX( - Math.PI / 2 );
 				groundPlane.position.set( 0, - 49, 0 );
-				groundPlane.receiveShadow  = true;
+				//groundPlane.receiveShadow  = true;
 				scene.add( groundPlane );
 
 
@@ -623,6 +636,7 @@
 					metalness:0,
 					color: new THREE.Color( '#ffffff' ),
 					roughness: .2,
+					side: THREE.DoubleSide
 
 				} );
 
@@ -780,7 +794,7 @@
 
 				// ambient Light
 				ambLight = new THREE.AmbientLight( 0x404040, .4 ); // soft white light
-				ambLight.shadowMap = true;
+				//ambLight.shadowMap = true;
 				scene.add(ambLight);
 
 
@@ -983,7 +997,9 @@
 				renderer.setRenderTarget(null);
 
 				//camera.position.x += .1*Math.sin(time);
-				camera.position.z += .05*Math.cos(time*.2);
+				camera.position.z += .25*Math.cos(time*.2);
+				camera.position.y = 20*Math.cos(time*.2);
+				//camera.lookAt(nft);
 				//camera.position.y += .05*Math.cos(time*.1);
 
 
